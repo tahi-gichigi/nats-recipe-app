@@ -23,7 +23,7 @@ The main page is `app/page.tsx` - edit it and the browser auto-updates.
 
 ## Preview
 
-Live on Vercel: _URL will be added after first deploy_
+Live on Vercel: https://nats-recipe-app.vercel.app
 
 ## Project Structure
 
