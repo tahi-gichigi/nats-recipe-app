@@ -4,9 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Search } from "lucide-react";
-import { RecipeCard } from "@/components/recipe-card";
 import { LiveRecipeCard } from "@/components/live-recipe-card";
-import { recipes } from "@/lib/recipes";
 import { searchMealsByIngredient, type MealSummary } from "@/lib/mealdb";
 
 const PAGE_SIZE = 10;
@@ -45,18 +43,20 @@ function RecipesContent() {
     return (
       <div className="px-6 py-12">
         <div className="max-w-5xl mx-auto">
-          <div className="mb-8">
-            <h1 className="font-[family-name:var(--font-heading)] text-3xl text-stone-900">
-              The recipe box
+          <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-12 text-center">
+            <h1 className="font-[family-name:var(--font-heading)] text-2xl text-stone-900">
+              Search for an ingredient to get started
             </h1>
             <p className="mt-2 text-stone-600">
-              Every recipe, sorted the way they landed in the box.
+              Type something you have in the fridge and we&apos;ll find recipes
+              for it.
             </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recipes.map((r) => (
-              <RecipeCard key={r.slug} recipe={r} />
-            ))}
+            <Link
+              href="/"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-stone-900 text-white px-5 h-10 text-sm hover:bg-stone-800"
+            >
+              Go to search
+            </Link>
           </div>
         </div>
       </div>
@@ -107,7 +107,9 @@ function RecipesContent() {
           </div>
         ) : allMeals.length === 0 ? (
           <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-10 text-center">
-            <p className="text-stone-700 mb-4">No recipes found for that ingredient.</p>
+            <p className="text-stone-700 mb-4">
+              No recipes found for that ingredient.
+            </p>
             <Link
               href="/"
               className="inline-flex items-center gap-2 rounded-full bg-stone-900 text-white px-5 h-10 text-sm hover:bg-stone-800"

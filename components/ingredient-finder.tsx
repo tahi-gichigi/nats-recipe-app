@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState, KeyboardEvent } from "react";
 import { Plus, Search, Shuffle, X } from "lucide-react";
-import { recipes } from "@/lib/recipes";
 
 export function IngredientFinder() {
   const router = useRouter();
@@ -38,9 +37,13 @@ export function IngredientFinder() {
     router.push(`/recipes${q}`);
   };
 
-  const surprise = () => {
-    const r = recipes[Math.floor(Math.random() * recipes.length)];
-    router.push(`/recipes/${r.slug}`);
+  const surprise = async () => {
+    const res = await fetch(
+      "https://www.themealdb.com/api/json/v1/1/random.php"
+    );
+    const data = await res.json();
+    const id = data.meals?.[0]?.idMeal;
+    if (id) router.push(`/recipes/${id}`);
   };
 
   return (

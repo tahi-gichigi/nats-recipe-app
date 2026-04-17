@@ -1,17 +1,41 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bookmark } from "lucide-react";
-import { RecipeCard } from "@/components/recipe-card";
+import { Bookmark, Loader2 } from "lucide-react";
+import { LiveRecipeCard } from "@/components/live-recipe-card";
 import { useSavedRecipes } from "@/lib/saved";
-import { getRecipeBySlug } from "@/lib/recipes";
+import { getMealById, type MealSummary } from "@/lib/mealdb";
 
 export default function SavedPage() {
   const { saved, hydrated } = useSavedRecipes();
+  const [meals, setMeals] = useState<MealSummary[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const savedRecipes = saved
-    .map((slug) => getRecipeBySlug(slug))
-    .filter((r): r is NonNullable<ReturnType<typeof getRecipeBySlug>> => !!r);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (saved.length === 0) {
+      setMeals([]);
+      return;
+    }
+    setLoading(true);
+    Promise.all(
+      saved.map(async (id) => {
+        const meal = await getMealById(id);
+        if (!meal) return null;
+        return {
+          idMeal: meal.idMeal,
+          strMeal: meal.strMeal,
+          strMealThumb: meal.strMealThumb,
+        } as MealSummary;
+      })
+    )
+      .then((results) =>
+        setMeals(results.filter((m): m is MealSummary => m !== null))
+      )
+      .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saved.join(","), hydrated]);
 
   return (
     <div className="px-6 py-12">
@@ -21,11 +45,16 @@ export default function SavedPage() {
             Saved recipes
           </h1>
           <p className="mt-2 text-stone-600">
-            Your keep-forever list. Tap the bookmark on any recipe to add it here.
+            Your keep-forever list. Tap the bookmark on any recipe to add it
+            here.
           </p>
         </div>
 
-        {!hydrated ? null : savedRecipes.length === 0 ? (
+        {!hydrated || loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
+          </div>
+        ) : meals.length === 0 ? (
           <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-12 text-center">
             <div className="mx-auto h-12 w-12 rounded-full bg-stone-100 flex items-center justify-center">
               <Bookmark className="h-5 w-5 text-stone-500" />
@@ -34,11 +63,11 @@ export default function SavedPage() {
               Nothing saved yet
             </h2>
             <p className="mt-1 text-sm text-stone-600 max-w-sm mx-auto">
-              When you find a recipe you like, hit save and it&rsquo;ll live here
-              waiting for you.
+              When you find a recipe you like, hit save and it&rsquo;ll live
+              here waiting for you.
             </p>
             <Link
-              href="/recipes"
+              href="/"
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-stone-900 text-white px-5 h-10 text-sm hover:bg-stone-800"
             >
               Find something to cook
@@ -46,8 +75,8 @@ export default function SavedPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {savedRecipes.map((r) => (
-              <RecipeCard key={r.slug} recipe={r} />
+            {meals.map((meal) => (
+              <LiveRecipeCard key={meal.idMeal} meal={meal} />
             ))}
           </div>
         )}
