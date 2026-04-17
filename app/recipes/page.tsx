@@ -5,58 +5,69 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Search } from "lucide-react";
 import { LiveRecipeCard } from "@/components/live-recipe-card";
-import type { RecipeSummary, SearchResponse } from "@/lib/spoonacular";
+import type { RecipeCard } from "@/lib/types";
 
-const PAGE_SIZE = 10;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+async function searchRecipes(
+  ingredients: string[],
+  page: number,
+): Promise<{ recipes: RecipeCard[]; hasMore: boolean }> {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/search-recipes`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({ ingredients, page }),
+  });
+  if (!res.ok) throw new Error(`Search failed: ${res.status}`);
+  return res.json();
+}
 
 function RecipesContent() {
   const searchParams = useSearchParams();
   const ingredientsParam = searchParams.get("ingredients");
-
   const terms = ingredientsParam
-    ? ingredientsParam
-        .split(",")
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean)
+    ? ingredientsParam.split(",").map((s) => s.trim()).filter(Boolean)
     : [];
 
-  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
-  const [totalResults, setTotalResults] = useState(0);
-  const [offset, setOffset] = useState(0);
+  const [recipes, setRecipes] = useState<RecipeCard[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPage = async (newOffset: number, append: boolean) => {
-    if (append) setLoadingMore(true);
-    else setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(
-        `/api/search?ingredients=${encodeURIComponent(terms.join(","))}&offset=${newOffset}&number=${PAGE_SIZE}`
-      );
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Request failed (${res.status})`);
-      }
-      const data: SearchResponse = await res.json();
-      setRecipes((prev) => (append ? [...prev, ...data.results] : data.results));
-      setTotalResults(data.totalResults);
-      setOffset(newOffset);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
   useEffect(() => {
     if (!ingredientsParam) return;
-    fetchPage(0, false);
+    setLoading(true);
+    setError(null);
+    setPage(1);
+    setRecipes([]);
+    searchRecipes(terms, 1)
+      .then((data) => {
+        setRecipes(data.recipes);
+        setHasMore(data.hasMore);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ingredientsParam]);
+
+  const loadMore = () => {
+    const next = page + 1;
+    setLoadingMore(true);
+    searchRecipes(terms, next)
+      .then((data) => {
+        setRecipes((prev) => [...prev, ...data.recipes]);
+        setHasMore(data.hasMore);
+        setPage(next);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoadingMore(false));
+  };
 
   if (terms.length === 0) {
     return (
@@ -82,8 +93,6 @@ function RecipesContent() {
     );
   }
 
-  const hasMore = recipes.length < totalResults;
-
   return (
     <div className="px-6 py-12">
       <div className="max-w-5xl mx-auto">
@@ -91,11 +100,9 @@ function RecipesContent() {
           <h1 className="font-[family-name:var(--font-heading)] text-3xl text-stone-900">
             Recipes with {terms.join(", ")}
           </h1>
-          {!loading && !error && (
+          {!loading && !error && recipes.length > 0 && (
             <p className="mt-2 text-stone-600">
-              {totalResults === 0
-                ? "Nothing found — try a different ingredient."
-                : `Showing ${recipes.length} of ${totalResults} recipes.`}
+              Showing {recipes.length} recipe{recipes.length !== 1 ? "s" : ""}.
             </p>
           )}
           <Link
@@ -114,7 +121,7 @@ function RecipesContent() {
         ) : error ? (
           <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-10 text-center">
             <p className="text-stone-700 mb-4">
-              Couldn&apos;t reach the recipe service. Try again in a moment.
+              Couldn&apos;t reach the recipe sources. Try again in a moment.
             </p>
             <Link
               href="/"
@@ -126,7 +133,7 @@ function RecipesContent() {
         ) : recipes.length === 0 ? (
           <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-10 text-center">
             <p className="text-stone-700 mb-4">
-              No recipes found for that ingredient.
+              Nothing found — try a different ingredient.
             </p>
             <Link
               href="/"
@@ -139,13 +146,13 @@ function RecipesContent() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {recipes.map((r) => (
-                <LiveRecipeCard key={r.id} recipe={r} />
+                <LiveRecipeCard key={r.url} recipe={r} />
               ))}
             </div>
             {hasMore && (
               <div className="mt-10 text-center">
                 <button
-                  onClick={() => fetchPage(offset + PAGE_SIZE, true)}
+                  onClick={loadMore}
                   disabled={loadingMore}
                   className="inline-flex items-center gap-2 rounded-full bg-stone-900 text-white px-6 h-11 text-sm hover:bg-stone-800 disabled:opacity-50"
                 >

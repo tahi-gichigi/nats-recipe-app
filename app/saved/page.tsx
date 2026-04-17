@@ -1,52 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bookmark, Loader2 } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { LiveRecipeCard } from "@/components/live-recipe-card";
 import { useSavedRecipes } from "@/lib/saved";
-import type { RecipeSummary } from "@/lib/spoonacular";
 
 export default function SavedPage() {
   const { saved, hydrated } = useSavedRecipes();
-  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    if (saved.length === 0) {
-      setRecipes([]);
-      return;
-    }
-    const ids = saved.filter((s) => /^\d+$/.test(s)).join(",");
-    if (!ids) {
-      setRecipes([]);
-      return;
-    }
-    setLoading(true);
-    fetch(`/api/recipes/bulk?ids=${ids}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setRecipes(
-            data.map((r) => ({
-              id: r.id,
-              title: r.title,
-              image: r.image,
-              readyInMinutes: r.readyInMinutes,
-              servings: r.servings,
-              sourceName: r.sourceName,
-              sourceUrl: r.sourceUrl,
-            }))
-          );
-        } else {
-          setRecipes([]);
-        }
-      })
-      .catch(() => setRecipes([]))
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saved.join(","), hydrated]);
+  if (!hydrated) return null;
 
   return (
     <div className="px-6 py-12">
@@ -61,11 +23,7 @@ export default function SavedPage() {
           </p>
         </div>
 
-        {!hydrated || loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
-          </div>
-        ) : recipes.length === 0 ? (
+        {saved.length === 0 ? (
           <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-12 text-center">
             <div className="mx-auto h-12 w-12 rounded-full bg-stone-100 flex items-center justify-center">
               <Bookmark className="h-5 w-5 text-stone-500" />
@@ -86,8 +44,8 @@ export default function SavedPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recipes.map((r) => (
-              <LiveRecipeCard key={r.id} recipe={r} />
+            {saved.map((r) => (
+              <LiveRecipeCard key={r.url} recipe={r} />
             ))}
           </div>
         )}
