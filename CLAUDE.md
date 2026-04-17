@@ -29,3 +29,9 @@ A recipe finder. The user inputs ingredients they have, and the app suggests din
 - If she hits an error, help her understand it simply — she's not a developer.
 - Mock recipe data should look like real BBC Food / Olive Magazine recipes (real ingredient names, realistic cooking times, real recipe titles).
 - Keep the UI simple and functional. Clarity over aesthetics.
+
+## Images
+
+Do not generate images or use local image files. For recipe photos, use free Unsplash URLs directly as `src` in `<img>` tags or Next.js `<Image>` — no API key needed. Example format: `https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&auto=format`
+
+Search unsplash.com for a relevant food photo and copy the image URL. Use one appropriate photo per recipe.
