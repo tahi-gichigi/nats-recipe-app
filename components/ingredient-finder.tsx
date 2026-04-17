@@ -38,11 +38,9 @@ export function IngredientFinder() {
   };
 
   const surprise = async () => {
-    const res = await fetch(
-      "https://www.themealdb.com/api/json/v1/1/random.php"
-    );
+    const res = await fetch("/api/random");
     const data = await res.json();
-    const id = data.meals?.[0]?.idMeal;
+    const id = data.recipes?.[0]?.id;
     if (id) router.push(`/recipes/${id}`);
   };
 

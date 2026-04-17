@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Search } from "lucide-react";
 import { LiveRecipeCard } from "@/components/live-recipe-card";
-import { searchMealsByIngredient, type MealSummary } from "@/lib/mealdb";
+import type { RecipeSummary, SearchResponse } from "@/lib/spoonacular";
 
 const PAGE_SIZE = 10;
 
@@ -20,22 +20,41 @@ function RecipesContent() {
         .filter(Boolean)
     : [];
 
-  const [allMeals, setAllMeals] = useState<MealSummary[]>([]);
-  const [visible, setVisible] = useState(PAGE_SIZE);
+  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [totalResults, setTotalResults] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPage = async (newOffset: number, append: boolean) => {
+    if (append) setLoadingMore(true);
+    else setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(
+        `/api/search?ingredients=${encodeURIComponent(terms.join(","))}&offset=${newOffset}&number=${PAGE_SIZE}`
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
+      const data: SearchResponse = await res.json();
+      setRecipes((prev) => (append ? [...prev, ...data.results] : data.results));
+      setTotalResults(data.totalResults);
+      setOffset(newOffset);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (!ingredientsParam) return;
-    setLoading(true);
-    setError(false);
-    setVisible(PAGE_SIZE);
-    setAllMeals([]);
-
-    searchMealsByIngredient(terms[0])
-      .then((meals) => setAllMeals(meals))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    fetchPage(0, false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ingredientsParam]);
 
@@ -63,8 +82,7 @@ function RecipesContent() {
     );
   }
 
-  const displayedMeals = allMeals.slice(0, visible);
-  const hasMore = visible < allMeals.length;
+  const hasMore = recipes.length < totalResults;
 
   return (
     <div className="px-6 py-12">
@@ -75,9 +93,9 @@ function RecipesContent() {
           </h1>
           {!loading && !error && (
             <p className="mt-2 text-stone-600">
-              {allMeals.length === 0
+              {totalResults === 0
                 ? "Nothing found — try a different ingredient."
-                : `Showing ${Math.min(visible, allMeals.length)} of ${allMeals.length} recipes.`}
+                : `Showing ${recipes.length} of ${totalResults} recipes.`}
             </p>
           )}
           <Link
@@ -96,7 +114,7 @@ function RecipesContent() {
         ) : error ? (
           <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-10 text-center">
             <p className="text-stone-700 mb-4">
-              Couldn&apos;t reach the recipe database. Try again in a moment.
+              Couldn&apos;t reach the recipe service. Try again in a moment.
             </p>
             <Link
               href="/"
@@ -105,7 +123,7 @@ function RecipesContent() {
               Back to search
             </Link>
           </div>
-        ) : allMeals.length === 0 ? (
+        ) : recipes.length === 0 ? (
           <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-10 text-center">
             <p className="text-stone-700 mb-4">
               No recipes found for that ingredient.
@@ -120,17 +138,25 @@ function RecipesContent() {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedMeals.map((meal) => (
-                <LiveRecipeCard key={meal.idMeal} meal={meal} />
+              {recipes.map((r) => (
+                <LiveRecipeCard key={r.id} recipe={r} />
               ))}
             </div>
             {hasMore && (
               <div className="mt-10 text-center">
                 <button
-                  onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                  className="inline-flex items-center gap-2 rounded-full bg-stone-900 text-white px-6 h-11 text-sm hover:bg-stone-800"
+                  onClick={() => fetchPage(offset + PAGE_SIZE, true)}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 rounded-full bg-stone-900 text-white px-6 h-11 text-sm hover:bg-stone-800 disabled:opacity-50"
                 >
-                  Show 10 more
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading
+                    </>
+                  ) : (
+                    "Show 10 more"
+                  )}
                 </button>
               </div>
             )}

@@ -5,34 +5,45 @@ import Link from "next/link";
 import { Bookmark, Loader2 } from "lucide-react";
 import { LiveRecipeCard } from "@/components/live-recipe-card";
 import { useSavedRecipes } from "@/lib/saved";
-import { getMealById, type MealSummary } from "@/lib/mealdb";
+import type { RecipeSummary } from "@/lib/spoonacular";
 
 export default function SavedPage() {
   const { saved, hydrated } = useSavedRecipes();
-  const [meals, setMeals] = useState<MealSummary[]>([]);
+  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
     if (saved.length === 0) {
-      setMeals([]);
+      setRecipes([]);
+      return;
+    }
+    const ids = saved.filter((s) => /^\d+$/.test(s)).join(",");
+    if (!ids) {
+      setRecipes([]);
       return;
     }
     setLoading(true);
-    Promise.all(
-      saved.map(async (id) => {
-        const meal = await getMealById(id);
-        if (!meal) return null;
-        return {
-          idMeal: meal.idMeal,
-          strMeal: meal.strMeal,
-          strMealThumb: meal.strMealThumb,
-        } as MealSummary;
+    fetch(`/api/recipes/bulk?ids=${ids}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setRecipes(
+            data.map((r) => ({
+              id: r.id,
+              title: r.title,
+              image: r.image,
+              readyInMinutes: r.readyInMinutes,
+              servings: r.servings,
+              sourceName: r.sourceName,
+              sourceUrl: r.sourceUrl,
+            }))
+          );
+        } else {
+          setRecipes([]);
+        }
       })
-    )
-      .then((results) =>
-        setMeals(results.filter((m): m is MealSummary => m !== null))
-      )
+      .catch(() => setRecipes([]))
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saved.join(","), hydrated]);
@@ -54,7 +65,7 @@ export default function SavedPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-stone-400" />
           </div>
-        ) : meals.length === 0 ? (
+        ) : recipes.length === 0 ? (
           <div className="rounded-2xl bg-white ring-1 ring-stone-200 p-12 text-center">
             <div className="mx-auto h-12 w-12 rounded-full bg-stone-100 flex items-center justify-center">
               <Bookmark className="h-5 w-5 text-stone-500" />
@@ -75,8 +86,8 @@ export default function SavedPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {meals.map((meal) => (
-              <LiveRecipeCard key={meal.idMeal} meal={meal} />
+            {recipes.map((r) => (
+              <LiveRecipeCard key={r.id} recipe={r} />
             ))}
           </div>
         )}
