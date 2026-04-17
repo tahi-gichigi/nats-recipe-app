@@ -89,7 +89,7 @@ export function IngredientFinder() {
         <button
           type="button"
           onClick={goFind}
-          className="inline-flex justify-center items-center gap-2 h-12 px-6 rounded-full bg-stone-900 text-white font-medium hover:bg-stone-800 transition-colors flex-1"
+          className="flex w-full sm:flex-1 justify-center items-center gap-2 h-12 px-6 rounded-full bg-stone-900 text-white font-medium hover:bg-stone-800 transition-colors"
         >
           <Search className="h-4 w-4" />
           {tags.length === 0 ? "Browse all recipes" : "Find recipes"}
@@ -97,7 +97,7 @@ export function IngredientFinder() {
         <button
           type="button"
           onClick={surprise}
-          className="inline-flex justify-center items-center gap-2 h-12 px-6 rounded-full bg-amber-50 text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100 font-medium transition-colors"
+          className="flex w-full sm:w-auto justify-center items-center gap-2 h-12 px-6 rounded-full bg-amber-50 text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100 font-medium transition-colors"
         >
           <Shuffle className="h-4 w-4" />
           Surprise me
